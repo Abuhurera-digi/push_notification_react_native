@@ -5,7 +5,7 @@
  * @format
  */
 
-import React, { useEffect,useState } from 'react';
+import React, {useEffect, useState} from 'react';
 import type {PropsWithChildren} from 'react';
 import {
   Alert,
@@ -17,26 +17,20 @@ import {
   Button,
   useColorScheme,
   View,
-    Platform
+  Platform,
 } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
 
 import notifee from '@notifee/react-native';
 import {PermissionsAndroid} from 'react-native';
-import Geolocation, { GeoCoordinates } from 'react-native-geolocation-service';
-
-
-
-
-
+import Geolocation, {GeoCoordinates} from 'react-native-geolocation-service';
 
 function App(): React.JSX.Element {
-
   const [location, setLocation] = useState<GeoCoordinates | null>(null);
-  
+
   useEffect(() => {
-    requestPermission()
-  },[]);
+    requestPermission();
+  }, []);
 
   useEffect(() => {
     requestLocationPermission();
@@ -45,124 +39,120 @@ function App(): React.JSX.Element {
   const requestLocationPermission = async () => {
     if (Platform.OS === 'android') {
       const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
       );
       if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-        Alert.alert('Permission Denied', 'Location permission is required to use this feature.');
+        Alert.alert(
+          'Permission Denied',
+          'Location permission is required to use this feature.',
+        );
         return;
       }
     }
     getLiveLocation();
   };
 
-
   const getLiveLocation = () => {
     Geolocation.watchPosition(
-      (position) => {
-        console.log("Live Location:", position);
+      position => {
+        console.log('Live Location:', position);
         setLocation(position.coords);
       },
-      (error) => {
-        console.error("Location Error:", error);
-        Alert.alert("Error", error.message);
+      error => {
+        console.error('Location Error:', error);
+        Alert.alert('Error', error.message);
       },
       {
         enableHighAccuracy: true, // Use GPS for precise location
         distanceFilter: 1, // Update when user moves at least 1 meter
         interval: 5000, // Fetch location every 5 seconds
-      }
+      },
     );
   };
 
-  const requestPermission= async () => {
+  const requestPermission = async () => {
+    const grandted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+    );
 
-    const grandted = await  PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
-
-    if(grandted === PermissionsAndroid.RESULTS.GRANTED){
-     
+    if (grandted === PermissionsAndroid.RESULTS.GRANTED) {
       get();
-      console.log("llllllllll", get());
-      Alert.alert("Permission Granted");
+      console.log('llllllllll', get());
+      Alert.alert('Permission Granted');
+    } else {
+      console.log('oooooooooooo');
+      Alert.alert('Permission Deniede');
     }
-    else{
-      console.log("oooooooooooo");
-      Alert.alert("Permission Deniede");
-    }
-
-  }
+  };
 
   let notificationMessage;
   async function onMessageReceived(message) {
-  
-     notificationMessage= message;
-     
-    console.log("messagesssss", message)
-   
+    notificationMessage = message;
+
+    console.log('messagesssss', message);
   }
-  
+
   messaging().onMessage(onMessageReceived);
   messaging().setBackgroundMessageHandler(onMessageReceived);
 
+  const get = async () => {
+    await messaging().registerDeviceForRemoteMessages();
+    const token = await messaging().getToken();
+    console.log('token', token);
+  };
 
-const get = async () => {
-  await messaging().registerDeviceForRemoteMessages();
-const token = await messaging().getToken();
-console.log("token", token);
-}
+  async function onDisplayNotification() {
+    try {
+      // Request permission
+      await notifee.requestPermission();
 
+      // Create a notification channel
+      const channelId = await notifee.createChannel({
+        id: 'default',
+        name: 'Default Channel',
+      });
 
- 
-async function onDisplayNotification() {
-  try {
-    // Request permission
-    await notifee.requestPermission();
+      console.log('Notification Channel Created:', channelId);
 
-    // Create a notification channel
-    const channelId = await notifee.createChannel({
-      id: 'default',
-      name: 'Default Channel',
-    });
-
-    console.log("Notification Channel Created:", channelId);
-
-    // Display the notification
-    await notifee.displayNotification({
-      title: notificationMessage?.notification?.title || "No Title",
-      body: notificationMessage?.notification?.body || "No Body",
-      android: {
-        channelId,
-        pressAction: {
-          id: 'default',
+      // Display the notification
+      await notifee.displayNotification({
+        title: notificationMessage?.notification?.title || 'No Title',
+        body: notificationMessage?.notification?.body || 'No Body',
+        android: {
+          channelId,
+          pressAction: {
+            id: 'default',
+          },
         },
-      },
-    });
+      });
 
-    console.log("Notification Displayed Successfully");
-  } catch (error) {
-    console.error("Notification Error:", error);
+      console.log('Notification Displayed Successfully');
+    } catch (error) {
+      console.error('Notification Error:', error);
+    }
   }
-}
-
 
   return (
-    <SafeAreaView >
-     {/* <View>
+    <SafeAreaView>
+      {/* <View>
     <Text>App</Text>
      </View> */}
-    <View>
-      <Button title="Display Notification" onPress={() => onDisplayNotification()} />
-      <Text style={{ fontSize: 18, fontWeight: 'bold' }}>Live Location</Text>
-      {location ? (
-        <>
-          <Text>Latitude: {location.latitude}</Text>
-          <Text>Longitude: {location.longitude}</Text>
-        </>
-      ) : (
-        <Text>Fetching location...</Text>
-      )}
-      <Button title="Refresh Location" onPress={getLiveLocation} />
-    </View>
-    
+      <View>
+        <Button
+          title="Display Notification"
+          onPress={() => onDisplayNotification()}
+        />
+        <Text style={{fontSize: 18, fontWeight: 'bold'}}>Live Location</Text>
+        {location ? (
+          <>
+            <Text>Latitude: {location.latitude}</Text>
+            <Text>Longitude: {location.longitude}</Text>
+          </>
+        ) : (
+          <Text>Fetching location...</Text>
+        )}
+        <Button title="Refresh Location" onPress={getLiveLocation} />
+      </View>
     </SafeAreaView>
   );
 }
