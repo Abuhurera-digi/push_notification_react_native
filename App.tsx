@@ -5,93 +5,116 @@
  * @format
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import type {PropsWithChildren} from 'react';
 import {
+  Alert,
   SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
+  Button,
   useColorScheme,
   View,
 } from 'react-native';
+import messaging from '@react-native-firebase/messaging';
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+import notifee from '@notifee/react-native';
+import {PermissionsAndroid} from 'react-native';
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+
+
 
 function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+  
+  useEffect(() => {
+    requestPermission()
+  },[]);
 
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
+  const requestPermission= async () => {
+
+    const grandted = await  PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+
+    if(grandted === PermissionsAndroid.RESULTS.GRANTED){
+     
+      get();
+      console.log("llllllllll", get());
+      Alert.alert("Permission Granted");
+    }
+    else{
+      console.log("oooooooooooo");
+      Alert.alert("Permission Deniede");
+    }
+
+  }
+
+  let notificationMessage;
+  async function onMessageReceived(message) {
+    // Do something
+     notificationMessage= message;
+     
+    console.log("messagesssss", message)
+    console.log("qqqqqqqqq", notificationMessage);
+  }
+  
+  messaging().onMessage(onMessageReceived);
+  messaging().setBackgroundMessageHandler(onMessageReceived);
+
+
+const get = async () => {
+  await messaging().registerDeviceForRemoteMessages();
+const token = await messaging().getToken();
+console.log("yyyyyyyyyyy", token);
+}
+
+//   const getToken = async () => {
+//     await messaging().registerDeviceForRemoteMessages();
+// const token = await messaging().getToken();
+//   } 
+ 
+async function onDisplayNotification() {
+  try {
+    // Request permission
+    await notifee.requestPermission();
+
+    // Create a notification channel
+    const channelId = await notifee.createChannel({
+      id: 'default',
+      name: 'Default Channel',
+      //importance: notifee.AndroidImportance.HIGH, // Ensure high importance
+    });
+
+    console.log("Notification Channel Created:", channelId);
+
+    // Display the notification
+    await notifee.displayNotification({
+      title: notificationMessage?.notification?.title || "No Title",
+      body: notificationMessage?.notification?.body || "No Body",
+      android: {
+        channelId,
+        pressAction: {
+          id: 'default',
+        },
+      },
+    });
+
+    console.log("Notification Displayed Successfully");
+  } catch (error) {
+    console.error("Notification Error:", error);
+  }
+}
+
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
+    <SafeAreaView >
+     {/* <View>
+    <Text>App</Text>
+     </View> */}
+    <View>
+      <Button title="Display Notification" onPress={() => onDisplayNotification()} />
+    </View>
     </SafeAreaView>
   );
 }
