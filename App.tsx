@@ -5,7 +5,7 @@
  * @format
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect,useState } from 'react';
 import type {PropsWithChildren} from 'react';
 import {
   Alert,
@@ -17,21 +17,62 @@ import {
   Button,
   useColorScheme,
   View,
+    Platform
 } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
 
 import notifee from '@notifee/react-native';
 import {PermissionsAndroid} from 'react-native';
+import Geolocation, { GeoCoordinates } from 'react-native-geolocation-service';
+
 
 
 
 
 
 function App(): React.JSX.Element {
+
+  const [location, setLocation] = useState<GeoCoordinates | null>(null);
   
   useEffect(() => {
     requestPermission()
   },[]);
+
+  useEffect(() => {
+    requestLocationPermission();
+  }, [location]);
+
+  const requestLocationPermission = async () => {
+    if (Platform.OS === 'android') {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+      );
+      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+        Alert.alert('Permission Denied', 'Location permission is required to use this feature.');
+        return;
+      }
+    }
+    getLiveLocation();
+  };
+
+
+  const getLiveLocation = () => {
+    Geolocation.watchPosition(
+      (position) => {
+        console.log("Live Location:", position);
+        setLocation(position.coords);
+      },
+      (error) => {
+        console.error("Location Error:", error);
+        Alert.alert("Error", error.message);
+      },
+      {
+        enableHighAccuracy: true, // Use GPS for precise location
+        distanceFilter: 1, // Update when user moves at least 1 meter
+        interval: 5000, // Fetch location every 5 seconds
+      }
+    );
+  };
 
   const requestPermission= async () => {
 
@@ -52,11 +93,11 @@ function App(): React.JSX.Element {
 
   let notificationMessage;
   async function onMessageReceived(message) {
-    // Do something
+  
      notificationMessage= message;
      
     console.log("messagesssss", message)
-    console.log("qqqqqqqqq", notificationMessage);
+   
   }
   
   messaging().onMessage(onMessageReceived);
@@ -66,13 +107,10 @@ function App(): React.JSX.Element {
 const get = async () => {
   await messaging().registerDeviceForRemoteMessages();
 const token = await messaging().getToken();
-console.log("yyyyyyyyyyy", token);
+console.log("token", token);
 }
 
-//   const getToken = async () => {
-//     await messaging().registerDeviceForRemoteMessages();
-// const token = await messaging().getToken();
-//   } 
+
  
 async function onDisplayNotification() {
   try {
@@ -83,7 +121,6 @@ async function onDisplayNotification() {
     const channelId = await notifee.createChannel({
       id: 'default',
       name: 'Default Channel',
-      //importance: notifee.AndroidImportance.HIGH, // Ensure high importance
     });
 
     console.log("Notification Channel Created:", channelId);
@@ -114,7 +151,18 @@ async function onDisplayNotification() {
      </View> */}
     <View>
       <Button title="Display Notification" onPress={() => onDisplayNotification()} />
+      <Text style={{ fontSize: 18, fontWeight: 'bold' }}>Live Location</Text>
+      {location ? (
+        <>
+          <Text>Latitude: {location.latitude}</Text>
+          <Text>Longitude: {location.longitude}</Text>
+        </>
+      ) : (
+        <Text>Fetching location...</Text>
+      )}
+      <Button title="Refresh Location" onPress={getLiveLocation} />
     </View>
+    
     </SafeAreaView>
   );
 }
